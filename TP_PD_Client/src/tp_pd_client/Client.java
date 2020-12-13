@@ -1,18 +1,17 @@
 package tp_pd_client;
 
-import com.sun.management.jmx.Trace;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.Scanner;
 
 public class Client
 {
+    private static final int BUFFER_SIZE = 4096;   //4kb should be more than enough... right?
+    
     public static void main(String[] args)
     {
         Scanner sc = new Scanner(System.in);
@@ -34,19 +33,21 @@ public class Client
         
         try
         {
-            sv_socket_udp = new DatagramSocket(sv_port, InetAddress.getByName(sv_ip));
+            sv_socket_udp = new DatagramSocket();
             
             String msg = "Hello server!";
             int msg_len = msg.length();
-            sv_pkt_udp = new DatagramPacket(msg.getBytes(), msg_len);
+            sv_pkt_udp = new DatagramPacket(msg.getBytes(), msg_len, InetAddress.getByName(sv_ip), sv_port);
             sv_socket_udp.send(sv_pkt_udp);
             
-            sv_pkt_udp = null;
+            byte[] buffer = new byte[BUFFER_SIZE];
+
+            sv_pkt_udp = new DatagramPacket(buffer, BUFFER_SIZE);
             
             //Recycle the packet
             sv_socket_udp.receive(sv_pkt_udp);
             
-            String reply = Arrays.toString(sv_pkt_udp.getData());
+            String reply = new String(sv_pkt_udp.getData());
             
             System.out.println(reply);
         }
