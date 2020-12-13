@@ -1,9 +1,9 @@
 package tp_pd_server;
 
-public class Main
+public class Server extends Thread
 {
     public static void main(String[] args)
     {
-        System.out.println("TODO - Everything");
+        
     }
 }
