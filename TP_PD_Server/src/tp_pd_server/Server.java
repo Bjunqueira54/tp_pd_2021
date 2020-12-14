@@ -76,11 +76,13 @@ public class Server extends Thread
         MulticastWrapper mcThread = new MulticastWrapper(); //Handle para a Thread.
         mcThread.start();
         
-        do
+        SV_ID = SV_PORT - 5000;
+        
+        
+        while(mcThread.idExists(SV_ID))
         {
             SV_ID++;
         }
-        while(mcThread.idExists(SV_ID));
         
         MulticastInformation info = null;
         SendMulticastInfo sendInfo = null;

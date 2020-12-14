@@ -39,7 +39,7 @@ public class MulticastWrapper extends Thread
         try
         {
             mcSocket = new MulticastSocket(MULTI_PORT);
-            mcGroup = InetAddress.getByName("localhost");
+            mcGroup = InetAddress.getByName("224.0.0.3");
             mcSocket.setNetworkInterface(NetworkInterface.getByInetAddress(InetAddress.getLocalHost()));
             
             list = new ArrayList();
