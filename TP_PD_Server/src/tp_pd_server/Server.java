@@ -117,6 +117,11 @@ public class Server extends Thread
                     //just refuse and send a list
                     udp_pkt = new DatagramPacket(CONNECTION_REFUSED.getBytes(), CONNECTION_REFUSED.length(), udp_pkt.getAddress(), udp_pkt.getPort());
                     udp_socket.send(udp_pkt);
+                    try
+                    {
+                        Thread.sleep(100);
+                    }
+                    catch(Exception e) {}
                     udp_pkt = new DatagramPacket(mcThread.getServerList(), mcThread.getServerList().length, udp_pkt.getAddress(), udp_pkt.getPort());
                     udp_socket.send(udp_pkt);
                 }

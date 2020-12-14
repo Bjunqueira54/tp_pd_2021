@@ -5,7 +5,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.util.Scanner;
 
 public class Client
@@ -63,8 +62,9 @@ public class Client
 
                 String reply = new String(sv_pkt_udp.getData());
 
-                if(reply.compareTo(CONNECTION_ACCEPTED) == 0)
+                if(reply.compareToIgnoreCase(CONNECTION_ACCEPTED) == 0)
                 {
+                    System.out.println("Connection Accepted");
                     sv_pkt_udp = new DatagramPacket(new byte[BUFFER_SIZE], BUFFER_SIZE);
                     sv_socket_udp.receive(sv_pkt_udp);
                     
@@ -73,8 +73,9 @@ public class Client
                     sv_socket_tcp = new Socket(InetAddress.getByName(sv_ip), Integer.parseUnsignedInt(tcp_port));
                     break;
                 }
-                else if(reply.compareTo(CONNECTION_REFUSED) == 0)
+                else if(reply.compareToIgnoreCase(CONNECTION_REFUSED) == 0)
                 {
+                    System.out.println("Connection Refused");
                     sv_pkt_udp = new DatagramPacket(new byte[BUFFER_SIZE], BUFFER_SIZE);
                     sv_socket_udp.receive(sv_pkt_udp);
                 }
