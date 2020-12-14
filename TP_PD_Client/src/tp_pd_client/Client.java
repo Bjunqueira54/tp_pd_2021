@@ -11,6 +11,7 @@ import java.util.Scanner;
 public class Client
 {
     private static final int BUFFER_SIZE = 4096;   //4kb should be more than enough... right?
+    private static final int SV_PORT = 5001;    //There will always be a server here
     
     public static void main(String[] args)
     {
@@ -22,12 +23,10 @@ public class Client
         
         System.out.print("Server IP: ");
         String sv_ip = sc.next();
-        System.out.print("Server Port: ");
-        int sv_port = sc.nextInt();
         
-        if(sv_ip.length() < 7 || sv_port <= 0)
+        if(sv_ip.length() < 7)
         {
-            System.out.println("Invalid IP or Port.");
+            System.out.println("Invalid IP format?");
             return;
         }
         
@@ -37,12 +36,10 @@ public class Client
             
             String msg = "Hello server!";
             int msg_len = msg.length();
-            sv_pkt_udp = new DatagramPacket(msg.getBytes(), msg_len, InetAddress.getByName(sv_ip), sv_port);
+            sv_pkt_udp = new DatagramPacket(msg.getBytes(), msg_len, InetAddress.getByName(sv_ip), SV_PORT);
             sv_socket_udp.send(sv_pkt_udp);
-            
-            byte[] buffer = new byte[BUFFER_SIZE];
 
-            sv_pkt_udp = new DatagramPacket(buffer, BUFFER_SIZE);
+            sv_pkt_udp = new DatagramPacket(new byte[BUFFER_SIZE], BUFFER_SIZE);
             
             //Recycle the packet
             sv_socket_udp.receive(sv_pkt_udp);

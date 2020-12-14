@@ -8,17 +8,34 @@ import java.net.SocketException;
 public class Server extends Thread
 {
     private static final int BUFFER_SIZE = 4096;   //4kb should be more than enough... right?
+    private static int SV_PORT = 5001;
     
     public static void main(String[] args)
     {
-        DatagramSocket udp_socket;
+        DatagramSocket udp_socket = null;
         DatagramPacket udp_pkt;
-        byte[] buffer = new byte[BUFFER_SIZE];
+        
+        while(true)
+        {
+          try
+          {
+            udp_socket = new DatagramSocket(SV_PORT);
+            break;
+          }
+          catch(SocketException e) { SV_PORT++; }
+        }
+        
+        if(udp_socket == null)
+            return;
+        
+        MulticastWrapper mcThread = new MulticastWrapper(); //Handle para a Thread.
+        mcThread.start();
+        
+        SendMulticastInfo sendInfo = mcThread.startSendInfo();  //Handle para a thread interior.
         
         try
         {
-            udp_socket = new DatagramSocket(1337);
-            udp_pkt = new DatagramPacket(buffer, BUFFER_SIZE);
+            udp_pkt = new DatagramPacket(new byte[BUFFER_SIZE], BUFFER_SIZE);
             
             udp_socket.receive(udp_pkt);
             
