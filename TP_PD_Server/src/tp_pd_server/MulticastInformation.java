@@ -1,6 +1,7 @@
 package tp_pd_server;
 
 import java.io.Serializable;
+import java.util.Date;
 
 public class MulticastInformation implements Serializable
 {
@@ -24,6 +25,8 @@ public class MulticastInformation implements Serializable
     //se uma Msg foi enviada corretamente e segura
     protected boolean isSafe;
     protected myClient cliente;
+    
+    private long lastPing = 0;
     
     public MulticastInformation(int serverId,int portUDP, String INET_ADDR, int nClients)
     {
@@ -50,5 +53,7 @@ public class MulticastInformation implements Serializable
     public boolean isIsSafe() { return isSafe; }
     public void setIsSafe(boolean isSafe) { this.isSafe = isSafe; }
     public myClient getClient() { return cliente; }
-    public void setClient(myClient cliente) { this.cliente = cliente; }   
+    public void setClient(myClient cliente) { this.cliente = cliente; }
+    public void setLastPing(long d) { this.lastPing = d; }
+    public long getLastPing() { return this.lastPing; }
 }

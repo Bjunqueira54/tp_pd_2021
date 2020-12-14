@@ -11,11 +11,13 @@ import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 public class MulticastWrapper extends Thread
 {
-    private static final int MULTI_PORT = 1337;
+    private static final int MULTI_PORT = 5432;
     private static final int BUFFER_SIZE = 4096;
     
     private MulticastSocket mcSocket = null;
@@ -38,7 +40,7 @@ public class MulticastWrapper extends Thread
         {
             mcSocket = new MulticastSocket(MULTI_PORT);
             mcGroup = InetAddress.getByName("localhost");
-            mcSocket.setNetworkInterface(NetworkInterface.getByInetAddress(mcGroup));
+            mcSocket.setNetworkInterface(NetworkInterface.getByInetAddress(InetAddress.getLocalHost()));
             
             list = new ArrayList();
             bout = new ByteArrayOutputStream();
@@ -74,29 +76,24 @@ public class MulticastWrapper extends Thread
         
         while(running)
         {
+            System.out.println("A espera de um packet em MulticastWrapper");
             try
             {
                 mcSocket.receive(mcPkt);
-                
+                System.out.println("Recebi um packet em MulticastWrapper");
                 bin = new ByteArrayInputStream(mcPkt.getData());
                 in = new ObjectInputStream(bin);
                 
-                MulticastInformation info = (MulticastInformation) in.readObject();
-                boolean found = false;
+                Object obj = in.readObject();
                 
-                for(int i = 0; i < list.size(); i++)
-                {
-                    if(list.get(i).getServerId() == info.getServerId())
-                    {
-                        list.set(i, info);  //Just update the info
-                        found = true;
-                        break;
-                    }
-                }
-                
-                if(!found) list.add(info);  //If not found, add new server to list
+                if(obj instanceof MulticastInformation)
+                    catchServerUpdate((MulticastInformation) obj);
             }
             catch(IOException | ClassNotFoundException e) {}
+            
+            clearTimeouts();
+            
+            System.out.println("Atualmente tenho " + list.size() + " servidores na lista");
         }
         
         try
@@ -108,4 +105,69 @@ public class MulticastWrapper extends Thread
     }
 
     public void terminate() { this.running = false; }
+    
+    public boolean idExists(int myId)
+    {
+        for(MulticastInformation it: list)
+            if(it.getServerId() == myId)
+                return true;
+        
+        return false;
+    }
+    
+    private void clearTimeouts()
+    {
+        Date currentTime = GregorianCalendar.getInstance().getTime();
+            
+            for(int i = 0; i < list.size(); i++)
+            {
+                if(currentTime.getTime() - list.get(i).getLastPing() > (10 * 1000))
+                    list.remove(i);
+            }
+    }
+    
+    private void catchServerUpdate(MulticastInformation info)
+    {
+        boolean found = false;
+        
+        info.setLastPing(GregorianCalendar.getInstance().getTime().getTime());
+
+        for(int i = 0; i < list.size(); i++)
+        {
+            if(list.get(i).getServerId() == info.getServerId())
+            {
+                list.set(i, info);  //Just update the info
+                found = true;
+                break;
+            }
+        }
+
+        if(!found) list.add(info);  //If not found, add new server to list
+    }
+    
+    public int getLeastBusyServer()
+    {
+        int min = 9999999;
+        
+        for(MulticastInformation it: list)
+            if(it.getnClients() < min)
+                min = it.getnClients();
+        
+        return min;
+    }
+    
+    public byte[] getServerList()
+    {
+        byte[] sv_list = new byte[list.size()];
+        
+        for(int i = 0; i < list.size(); i++)
+            sv_list[i] = (byte) list.get(i).getPortUDP();
+        
+        return sv_list;
+    }
+
+    public boolean getIsRunning()
+    {
+        return this.running;
+    }
 }

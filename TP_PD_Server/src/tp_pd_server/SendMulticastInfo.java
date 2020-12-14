@@ -23,12 +23,18 @@ public class SendMulticastInfo extends Thread
     {
         this.mcSocket = s;
         this.mcGroup = g;
-        this.mcPort = p;
+        this.mcPort = p;    
     }
     
     @Override
     public void run()
     {
+        try
+        {
+            mcSocket.joinGroup(mcGroup);
+        }
+        catch(IOException e) {}
+        
         try
         {
             bout = new ByteArrayOutputStream();
@@ -40,19 +46,28 @@ public class SendMulticastInfo extends Thread
         
         while(running)
         {
+            if(myInfo == null)
+            {
+                try
+                {
+                    sleep(1*1000);  //sleep for a sec, try again
+                }
+                catch(InterruptedException e)  {}
+                
+                continue;
+            }
             try
             {
                 if(lastInfo == myInfo)  //No updated information to send
-                {
-                    Thread.sleep(250);
-                    continue;
-                }
-                lastInfo = myInfo;
+                    Thread.sleep(5 * 1000); //sleep 5s before ping
+                else
+                    lastInfo = myInfo;
                 
                 out.writeObject(myInfo);
                 int len = bout.toByteArray().length;
                 DatagramPacket mcPkt = new DatagramPacket(bout.toByteArray(),len, mcGroup, mcPort);
                 mcSocket.send(mcPkt);
+                System.out.println("Sending packet from SendMulticastInfo");
             }
             catch(IOException | InterruptedException e) {}
         }
