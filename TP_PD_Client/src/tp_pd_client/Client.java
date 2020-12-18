@@ -60,7 +60,8 @@ public class Client
                 //Recycle the packet
                 sv_socket_udp.receive(sv_pkt_udp);
 
-                String reply = new String(sv_pkt_udp.getData());
+                String reply = new String(sv_pkt_udp.getData(), 0, sv_pkt_udp.getLength());
+                reply = reply.trim();
 
                 if(reply.compareToIgnoreCase(CONNECTION_ACCEPTED) == 0)
                 {
@@ -84,6 +85,8 @@ public class Client
         }
         
         //Do Server <-> Client stuff here
+        
+        
         try
         {
             sv_socket_tcp.close();

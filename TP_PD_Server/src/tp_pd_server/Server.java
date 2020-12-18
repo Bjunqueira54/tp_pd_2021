@@ -103,7 +103,7 @@ public class Server extends Thread
 
                 udp_socket.receive(udp_pkt);
 
-                String cl_message = new String(udp_pkt.getData());
+                String cl_message = new String(udp_pkt.getData(), 0, udp_pkt.getLength());
 
                 if(cl_message.compareTo(INIT_CONNECTION) == 0 && !(mcThread.getLeastBusyServer() < (int) (nClients / 2.0)))
                 {
@@ -119,11 +119,13 @@ public class Server extends Thread
                     //just refuse and send a list
                     udp_pkt = new DatagramPacket(CONNECTION_REFUSED.getBytes(), CONNECTION_REFUSED.length(), udp_pkt.getAddress(), udp_pkt.getPort());
                     udp_socket.send(udp_pkt);
+                    
                     try
                     {
                         Thread.sleep(100);
                     }
-                    catch(Exception e) {}
+                    catch(InterruptedException e) {}
+                    
                     udp_pkt = new DatagramPacket(mcThread.getServerList(), mcThread.getServerList().length, udp_pkt.getAddress(), udp_pkt.getPort());
                     udp_socket.send(udp_pkt);
                 }
