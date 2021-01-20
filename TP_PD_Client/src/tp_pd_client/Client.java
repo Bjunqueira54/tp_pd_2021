@@ -61,20 +61,20 @@ public class Client
                 sv_socket_udp.receive(sv_pkt_udp);
 
                 String reply = new String(sv_pkt_udp.getData(), 0, sv_pkt_udp.getLength());
-                reply = reply.trim();
 
-                if(reply.compareToIgnoreCase(CONNECTION_ACCEPTED) == 0)
+                if(reply.compareTo(CONNECTION_ACCEPTED) == 0)
                 {
                     System.out.println("Connection Accepted");
                     sv_pkt_udp = new DatagramPacket(new byte[BUFFER_SIZE], BUFFER_SIZE);
                     sv_socket_udp.receive(sv_pkt_udp);
                     
-                    String tcp_port = new String(sv_pkt_udp.getData());
+                    
+                    String tcp_port = new String(sv_pkt_udp.getData(), 0, sv_pkt_udp.getLength());
                     
                     sv_socket_tcp = new Socket(InetAddress.getByName(sv_ip), Integer.parseUnsignedInt(tcp_port));
                     break;
                 }
-                else if(reply.compareToIgnoreCase(CONNECTION_REFUSED) == 0)
+                else if(reply.compareTo(CONNECTION_REFUSED) == 0)
                 {
                     System.out.println("Connection Refused");
                     sv_pkt_udp = new DatagramPacket(new byte[BUFFER_SIZE], BUFFER_SIZE);
@@ -85,7 +85,7 @@ public class Client
         }
         
         //Do Server <-> Client stuff here
-        
+        System.out.println("Ready for Client <-> Server operations!");
         
         try
         {

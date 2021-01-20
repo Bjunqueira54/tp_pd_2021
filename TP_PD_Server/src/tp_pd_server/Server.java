@@ -4,11 +4,14 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.sql.*;
 
 public class Server extends Thread
 {
@@ -22,12 +25,92 @@ public class Server extends Thread
     private static int nClients = 0;
     
     private boolean running = true;
+    private ServerSocket tcp_socket = null;
     
     private final SendMulticastInfo sendInfo;
+    
+    public static class pdSQLConnectionManager
+    {
+        private static final int TIMEOUT = 10000; //10 seconds
+        private static final int TABLE_ENTRY_TIMEOUT = 60000; //60 seconds
 
-    public Server(SendMulticastInfo si)
+        private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
+        private static final String GET_WORKERS_QUERY = "SELECT * FROM pi_workers;";
+        
+        private static Connection conn = null;
+        private static Statement stmt = null, stmt2;
+        private static ResultSet rs = null;
+
+        public static void connectToDatabase(int port)
+        {
+            String dbName = "TP_PD_" + port;
+            
+            System.out.println("DB Name is: " + dbName);
+            
+            System.out.println("Trying to connect to DB");
+            try
+            {
+                Class.forName(JDBC_DRIVER);
+                System.out.println("Trying to connect to DB...");
+                String dbConnectionString = "jdbc:mysql://localhost/" + dbName + "?user=root&password=123456";
+                conn = DriverManager.getConnection(dbConnectionString);
+                System.out.println("Connection success!");
+            }
+            catch(ClassNotFoundException e)
+            {
+                System.out.println("ClassNotFoundException!");
+            }
+            catch(SQLException e)
+            {
+                System.out.println("SQLException!");
+                try
+                {
+                    conn = DriverManager.getConnection("jdbc:mysql://localhost/?user=root&password=123456");
+                    stmt = conn.createStatement();
+                    stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName);
+                }
+                catch(SQLException e1) 
+                {
+                    System.out.println("2nd SQLException. Are you sure the server is online?");
+                }
+            }
+            finally
+            {
+                try
+                {
+                    conn = DriverManager.getConnection("jdbc:mysql://localhost/" + dbName + "?user=root&password=123456");
+                }
+                catch(SQLException e)
+                {
+                    System.out.println("SQLException inside finally{}... wtf are you doing?");
+                }
+            }
+            
+            checkTables();
+        }
+        
+        private static void checkTables()
+        {
+            try
+            {
+                stmt  = conn.createStatement();
+                stmt.executeUpdate("CREATE TABLE IF NOT EXISTS clients(\n" +
+                                        "username VARCHAR(6) PRIMARY KEY,\n" +
+                                        "lastHost VARCHAR(30),\n" +
+                                        "port int(6),\n" +
+                                        "isConnected BOOLEAN)");
+            }
+            catch(SQLException e)
+            {
+                System.out.println("SQLException on checkTables");
+            }
+        }
+    }
+
+    public Server(SendMulticastInfo si, ServerSocket ss)
     {
         this.sendInfo = si;
+        this.tcp_socket = ss;
     }
     
     @Override
@@ -46,9 +129,13 @@ public class Server extends Thread
         }
         catch(UnknownHostException e) {}
         
+        {
+            System.out.println("Exception opening tcp socket... Server.run() methods exceptio");
+        }
+        
         while(running)
         {
-            //Do Server <-> Client stuff here   
+            //Do Server <-> Client stuff here
         }
     }
     
@@ -95,6 +182,8 @@ public class Server extends Thread
         }
         catch(UnknownHostException e) {}
         
+        pdSQLConnectionManager.connectToDatabase(SV_PORT);
+        
         while(true)
         {
             try
@@ -110,7 +199,23 @@ public class Server extends Thread
                         udp_pkt = new DatagramPacket(CONNECTION_ACCEPTED.getBytes(), CONNECTION_ACCEPTED.length(), udp_pkt.getAddress(), udp_pkt.getPort());
                         udp_socket.send(udp_pkt);
                         
-                        Server s = new Server(sendInfo);
+                        ServerSocket sock = null;
+                        
+                        try
+                        {
+                            sock = new ServerSocket(0);
+                        }
+                        catch(IOException e)
+                        {
+                            System.out.println("Exception in creating a TCP socket.");
+                        }
+                        
+                        String tcp_Port = Integer.toString(sock.getLocalPort());
+                        
+                        udp_pkt = new DatagramPacket(tcp_Port.getBytes(), tcp_Port.getBytes().length, udp_pkt.getAddress(), udp_pkt.getPort());
+                        udp_socket.send(udp_pkt);
+                        
+                        Server s = new Server(sendInfo, sock);
                         s.start();
                         client_thread_list.add(s);
                 }
