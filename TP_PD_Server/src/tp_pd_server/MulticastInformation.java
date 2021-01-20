@@ -24,7 +24,6 @@ public class MulticastInformation implements Serializable
     
     //se uma Msg foi enviada corretamente e segura
     protected boolean isSafe;
-    protected myClient cliente;
     
     private long lastPing = 0;
     
@@ -52,8 +51,6 @@ public class MulticastInformation implements Serializable
     public void setFicheiroEnv(String ficheiroEnv) { this.ficheiroEnv = ficheiroEnv; }
     public boolean isIsSafe() { return isSafe; }
     public void setIsSafe(boolean isSafe) { this.isSafe = isSafe; }
-    public myClient getClient() { return cliente; }
-    public void setClient(myClient cliente) { this.cliente = cliente; }
     public void setLastPing(long d) { this.lastPing = d; }
     public long getLastPing() { return this.lastPing; }
 }

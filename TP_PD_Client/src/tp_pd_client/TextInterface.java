@@ -4,18 +4,21 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.rmi.Naming;
 import java.util.Scanner;
 import myComm.LogRegPack;
-import sun.util.calendar.CalendarUtils;
+import myComm.ServerRMI;
 
 public class TextInterface
 {
-    private Scanner sc;
+    private final Scanner sc;
     
     private Socket sock = null;
     private ObjectOutputStream oos = null;
     private ObjectInputStream ios = null;
     private svState state = svState.UNNAUTHORIZED;
+    
+    private ServerRMI sv_rmi_interface = null;
     
     private enum svState
     {
@@ -39,6 +42,21 @@ public class TextInterface
             ios = new ObjectInputStream(sock.getInputStream());
         }
         catch(IOException e) {}
+        
+        //Get RMI interface
+        
+        try
+        {
+            String query = "RMI";
+            oos.writeObject(query);
+            oos.flush();
+            int rmi_id = ios.readInt();
+            String rmi_url = "rmi://localhost/TP_PD_Server_" + rmi_id;
+            
+            sv_rmi_interface = (ServerRMI) Naming.lookup(rmi_url);
+        }
+        catch(Exception e) { e.printStackTrace();}
+        
         
         char option = 0;
         
@@ -81,8 +99,8 @@ public class TextInterface
         System.out.print("Password: ");
         String password = sc.nextLine();
         
-        myComm.LogRegPack pack = new LogRegPack(username, password, type);
         boolean res = false;
+        /*myComm.LogRegPack pack = new LogRegPack(username, password, type);
         
         try
         {
@@ -90,7 +108,13 @@ public class TextInterface
             oos.flush();
             res = ios.readBoolean();
         }
-        catch(IOException e) {}
+        catch(IOException e) {}*/
+        
+        try
+        {
+            res = (type == 1) ? sv_rmi_interface.login(username, password) : sv_rmi_interface.register(username, password);
+        }
+        catch(Exception e) { e.printStackTrace(); }
         
         if(type == 1 && res)
         {

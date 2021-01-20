@@ -3,6 +3,7 @@ package tp_pd_server;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -10,6 +11,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.rmi.Naming;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -28,6 +34,9 @@ public class Server extends Thread
     
     private boolean running = true;
     private ServerSocket tcp_socket = null;
+    private Socket clSocket = null;
+    private ObjectOutputStream oos = null;
+    private ObjectInputStream ios = null;
     
     private final SendMulticastInfo sendInfo;
     
@@ -96,7 +105,7 @@ public class Server extends Thread
             {
                 stmt  = conn.createStatement();
                 stmt.executeUpdate("CREATE TABLE IF NOT EXISTS clients(\n" +
-                                        "username VARCHAR(6) PRIMARY KEY,\n" +
+                                        "username VARCHAR(12) PRIMARY KEY,\n" +
                                         "password VARCHAR(32),\n" +
                                         "lastHost VARCHAR(30),\n" +
                                         "port int(6),\n" +
@@ -108,7 +117,7 @@ public class Server extends Thread
             }
         }
         
-        public static boolean login(String u, String p, Socket s)
+        public static boolean login(String u, String p/*, Socket s*/)
         {
             try
             {
@@ -125,10 +134,7 @@ public class Server extends Thread
                         
                         if(dbPassword.compareTo(p) == 0)  //Testa a password
                         {
-                            String update = "UPDATE clients SET lastHost = '" +
-                                    s.getInetAddress().getHostAddress() + "', port = " +
-                                    s.getPort() + ", isConnected = " +
-                                    true + " WHERE username = '" + u + "'";
+                            String update = "UPDATE clients SET lastHost = '', isConnected = " + true + " WHERE username = '" + u + "'";
                             
                             System.out.println(update);
                             
@@ -185,19 +191,19 @@ public class Server extends Thread
             catch(SQLException e)
             {
                 System.out.println("REGISTER SQL EXCEPTION");
+                e.printStackTrace();
             }
             
             return false;
         }
     }
 
-    public Server(SendMulticastInfo si, ServerSocket ss)
+    public Server(SendMulticastInfo si, ServerSocket ss) throws RemoteException
     {
         this.sendInfo = si;
         this.tcp_socket = ss;
     }
     
-    @Override
     public void run()
     {
         //Whenever new client connects.
@@ -212,10 +218,6 @@ public class Server extends Thread
             sendInfo.getMyInfo(info);
         }
         catch(UnknownHostException e) {}
-        
-        Socket clSocket = null;
-        ObjectOutputStream oos = null;
-        ObjectInputStream ios = null;
         
         try
         {
@@ -246,7 +248,7 @@ public class Server extends Thread
                             
                             System.out.println("Got new login pack!");
                             
-                            res = pdSQLConnectionManager.login(pack.getUsername(), pack.getPassword(), clSocket);
+                            res = pdSQLConnectionManager.login(pack.getUsername(), pack.getPassword()/*, clSocket*/);
                             break;
                         case 2: //Register
                             
@@ -258,6 +260,15 @@ public class Server extends Thread
 
                     oos.writeBoolean(res);
                     oos.flush();
+                }
+                else if(myObj instanceof String)
+                {
+                    String query = (String) myObj;
+                    if(query.compareToIgnoreCase("RMI") == 0)
+                    {
+                        oos.writeInt(SV_ID);
+                        oos.flush();
+                    }
                 }
             }
             catch(IOException e) {}
@@ -294,11 +305,19 @@ public class Server extends Thread
         
         SV_ID = SV_PORT - 5000;
         
-        
         while(mcThread.idExists(SV_ID))
         {
             SV_ID++;
         }
+        
+        //Registo de RMI
+        
+        try
+        {
+            myRMIclass mrc = new myRMIclass(SV_ID);
+            mrc.registerRMI();
+        }
+        catch(Exception e) { e.printStackTrace(); }
         
         MulticastInformation info = null;
         SendMulticastInfo sendInfo = null;
@@ -345,6 +364,7 @@ public class Server extends Thread
                         udp_socket.send(udp_pkt);
                         
                         Server s = new Server(sendInfo, sock);
+                        nClients++;
                         s.start();
                         client_thread_list.add(s);
                 }
