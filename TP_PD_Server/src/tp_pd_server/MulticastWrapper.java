@@ -76,11 +76,9 @@ public class MulticastWrapper extends Thread
         
         while(running)
         {
-            System.out.println("A espera de um packet em MulticastWrapper");
             try
             {
                 mcSocket.receive(mcPkt);
-                System.out.println("Recebi um packet em MulticastWrapper");
                 bin = new ByteArrayInputStream(mcPkt.getData());
                 in = new ObjectInputStream(bin);
                 
@@ -92,8 +90,6 @@ public class MulticastWrapper extends Thread
             catch(IOException | ClassNotFoundException e) {}
             
             clearTimeouts();
-            
-            System.out.println("Atualmente tenho " + list.size() + " servidores na lista");
         }
         
         try

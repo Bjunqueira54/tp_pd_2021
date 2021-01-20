@@ -67,7 +67,6 @@ public class SendMulticastInfo extends Thread
                 int len = bout.toByteArray().length;
                 DatagramPacket mcPkt = new DatagramPacket(bout.toByteArray(),len, mcGroup, mcPort);
                 mcSocket.send(mcPkt);
-                System.out.println("Sending packet from SendMulticastInfo");
             }
             catch(IOException | InterruptedException e) {}
         }

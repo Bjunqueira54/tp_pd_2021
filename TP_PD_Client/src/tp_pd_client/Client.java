@@ -87,6 +87,9 @@ public class Client
         //Do Server <-> Client stuff here
         System.out.println("Ready for Client <-> Server operations!");
         
+        TextInterface i = new TextInterface(sv_socket_tcp);
+        i.run();
+        
         try
         {
             sv_socket_tcp.close();

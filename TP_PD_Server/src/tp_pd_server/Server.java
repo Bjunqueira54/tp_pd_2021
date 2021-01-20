@@ -1,6 +1,8 @@
 package tp_pd_server;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -47,7 +49,6 @@ public class Server extends Thread
             
             System.out.println("DB Name is: " + dbName);
             
-            System.out.println("Trying to connect to DB");
             try
             {
                 Class.forName(JDBC_DRIVER);
@@ -96,6 +97,7 @@ public class Server extends Thread
                 stmt  = conn.createStatement();
                 stmt.executeUpdate("CREATE TABLE IF NOT EXISTS clients(\n" +
                                         "username VARCHAR(6) PRIMARY KEY,\n" +
+                                        "password VARCHAR(32),\n" +
                                         "lastHost VARCHAR(30),\n" +
                                         "port int(6),\n" +
                                         "isConnected BOOLEAN)");
@@ -104,6 +106,88 @@ public class Server extends Thread
             {
                 System.out.println("SQLException on checkTables");
             }
+        }
+        
+        public static boolean login(String u, String p, Socket s)
+        {
+            try
+            {
+                stmt = conn.createStatement();
+                rs = stmt.executeQuery("SELECT * FROM clients");
+                
+                while(rs.next())
+                {
+                    String dbUsername = rs.getString("username");   //Procura por todos os usernames na DB
+                    
+                    if(dbUsername.compareToIgnoreCase(u) == 0)  //Se encontra um match
+                    {
+                        String dbPassword = rs.getString("password");
+                        
+                        if(dbPassword.compareTo(p) == 0)  //Testa a password
+                        {
+                            String update = "UPDATE clients SET lastHost = '" +
+                                    s.getInetAddress().getHostAddress() + "', port = " +
+                                    s.getPort() + ", isConnected = " +
+                                    true + " WHERE username = '" + u + "'";
+                            
+                            System.out.println(update);
+                            
+                            stmt2 = conn.createStatement();
+                            
+
+                            stmt2.executeUpdate(update);
+                            
+                            return true;
+                        }
+                        else
+                            return false;   //se não é igual, termina logo aqui
+                    }
+                }
+                
+                return false;   //não há nenhum utilizador com esse username registado
+            }
+            catch(SQLException e)
+            {
+                System.out.println("LOGIN SQL EXCEPTION!");
+                e.printStackTrace();
+            }
+            
+            return false;   //Teoricamente, nunca deveremos atingir isto. But just in case
+        }
+        
+        public static boolean register(String u, String p)
+        {
+            try
+            {
+                stmt = conn.createStatement();
+                rs = stmt.executeQuery("SELECT * FROM clients");
+                
+                while(rs.next())
+                {
+                    String dbUsername = rs.getString("username");
+                    
+                    if(dbUsername.compareToIgnoreCase(u) == 0)
+                    {
+                        System.out.println("Found Existing user!");
+                        return false;
+                    }
+                }
+                
+                System.out.println("No such user found, proceding with register");
+                
+                PreparedStatement pstmt = conn.prepareStatement("INSERT INTO clients(username, password) VALUES(?, ?)");
+                
+                pstmt.setString(1, u);
+                pstmt.setString(2, p);
+                
+                return (pstmt.executeUpdate() > 0);
+            }
+            catch(SQLException e)
+            {
+                System.out.println("REGISTER SQL EXCEPTION");
+            }
+            
+            return false;
         }
     }
 
@@ -129,13 +213,58 @@ public class Server extends Thread
         }
         catch(UnknownHostException e) {}
         
+        Socket clSocket = null;
+        ObjectOutputStream oos = null;
+        ObjectInputStream ios = null;
+        
+        try
         {
-            System.out.println("Exception opening tcp socket... Server.run() methods exceptio");
+            clSocket = tcp_socket.accept();
+        
+            oos = new ObjectOutputStream(clSocket.getOutputStream());
+            ios = new ObjectInputStream(clSocket.getInputStream());
         }
+        catch(IOException e) {}
         
         while(running)
         {
             //Do Server <-> Client stuff here
+            
+            try
+            {
+                Object myObj;
+                myObj = ios.readObject();
+                
+                if(myObj instanceof myComm.LogRegPack)
+                {
+                    myComm.LogRegPack pack = (myComm.LogRegPack) myObj;
+                    boolean res = false;
+                    
+                    switch(pack.getType())
+                    {
+                        case 1: //Login
+                            
+                            System.out.println("Got new login pack!");
+                            
+                            res = pdSQLConnectionManager.login(pack.getUsername(), pack.getPassword(), clSocket);
+                            break;
+                        case 2: //Register
+                            
+                            System.out.println("Got new register pack!");
+                            
+                            res = pdSQLConnectionManager.register(pack.getUsername(), pack.getPassword());
+                            break;
+                    }
+
+                    oos.writeBoolean(res);
+                    oos.flush();
+                }
+            }
+            catch(IOException e) {}
+            catch(ClassNotFoundException e)
+            {
+                System.out.println("No idea what class that is!");
+            }
         }
     }
     
